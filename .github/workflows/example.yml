@@ -22,6 +22,11 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
+# Permissions required for SARIF upload to GitHub Security tab
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   security-check:
     name: Check for Shai-Hulud 2.0 Attack
@@ -32,22 +37,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Shai-Hulud 2.0 Detector
+        id: detector
         uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
         with:
           fail-on-critical: true
           fail-on-high: false
           scan-lockfiles: true
-          output-format: text
-
-      - name: Upload SARIF results (optional)
-        if: always()
-        uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
-        with:
           output-format: sarif
 
       - name: Upload SARIF to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('shai-hulud-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: shai-hulud-results.sarif
         continue-on-error: true
