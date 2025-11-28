@@ -119,16 +119,17 @@ jobs:
               console.log('Error fetching discussions:', e.message);
             }
 
-            // Build markdown table
+            // Build markdown table with avatars
             const sortedContributors = Array.from(contributors.entries())
               .sort((a, b) => a[0].toLowerCase().localeCompare(b[0].toLowerCase()));
 
-            let table = '| Contributor | Contributions |\n';
-            table += '|-------------|---------------|\n';
+            let table = '| | Contributor | Contributions |\n';
+            table += '|---|-------------|---------------|\n';
 
             for (const [login, types] of sortedContributors) {
               const contributions = Array.from(types).sort().join(', ');
-              table += `| [@${login}](https://github.com/${login}) | ${contributions} |\n`;
+              const avatar = `<img src="https://github.com/${login}.png" width="32" height="32" alt="@${login}">`;
+              table += `| ${avatar} | [@${login}](https://github.com/${login}) | ${contributions} |\n`;
             }
 
             core.setOutput('table', table);
