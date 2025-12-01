@@ -175,6 +175,22 @@ View scan results in the Actions tab of your repository.
 
 This detector goes beyond simple package name matching to provide comprehensive threat detection:
 
+### Precise Version Matching
+
+The detector uses **semver (semantic versioning)** to accurately identify only the specific vulnerable versions of each package:
+
+```
+Example: kill-port package
+├── kill-port@2.0.1  →  ✅ SAFE (not affected)
+├── kill-port@2.0.2  →  ❌ COMPROMISED
+└── kill-port@2.0.3  →  ❌ COMPROMISED
+```
+
+This significantly reduces false positives by:
+- Matching exact versions listed in the compromised database
+- Supporting semver ranges (e.g., `>=1.0.0 <2.0.0`)
+- Properly handling version constraints from lockfiles
+
 ### Critical Risk Detection
 
 | Check | Description |
