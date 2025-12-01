@@ -747,7 +747,7 @@ Access scan results for conditional logic or notifications:
 | `fail-on-any` | Fail workflow if any compromised packages are found | `boolean` | `false` |
 | `scan-lockfiles` | Scan lockfiles for transitive dependencies | `boolean` | `true` |
 | `scan-node-modules` | Scan node_modules directory (slower, more thorough) | `boolean` | `false` |
-| `output-format` | Output format: `text`, `json`, or `sarif` |  `'text' \| 'json' \| 'sarif'`  | `json` |
+| `output-format` | Output format: `text`, `json`, or `sarif` |  `'text' \| 'json' \| 'sarif'`  | `text` |
 | `working-directory` | Directory to scan (relative to repository root) | `string` | `.` |
 
 ### Outputs Reference
@@ -773,7 +773,7 @@ When running locally or in non-GitHub CI systems:
 | `--fail-on-any` | `fail-on-any` input | `boolean` | `false` |
 | `--scan-lockfiles` | `scan-lockfiles` input | `boolean` | `true` |
 | `--scan-node-modules` | `scan-node-modules` input | `boolean` | `false` |
-| `--output-format` | `output-format` input | `'text' \| 'json' \| 'sarif'` | `json` |
+| `--output-format` | `output-format` input | `'text' \| 'json' \| 'sarif'` | `text` |
 | `--working-directory` | `working-directory` input | `string` | `.` |
 
 ### Environment Variables
@@ -787,7 +787,7 @@ When running locally or in non-GitHub CI systems:
 | `INPUT_FAIL_ON_ANY` | `fail-on-any` input | `boolean` | `false` |
 | `INPUT_SCAN_LOCKFILES` | `scan-lockfiles` input | `boolean` | `true` |
 | `INPUT_SCAN_NODE_MODULES` | `scan-node-modules` input | `boolean` | `false` |
-| `INPUT_OUTPUT_FORMAT` | `output-format` input | `'text' \| 'json' \| 'sarif'` | `json` | 
+| `INPUT_OUTPUT_FORMAT` | `output-format` input | `'text' \| 'json' \| 'sarif'` | `text` | 
 | `INPUT_WORKING_DIRECTORY` | `working-directory` input | `string` | `.` |
 
 ---
@@ -1036,7 +1036,7 @@ A: Yarn Classic lockfiles are supported. Yarn Berry (PnP) support is coming soon
 A: [Open an issue](https://github.com/gensecaihq/Shai-Hulud-2.0-Detector/issues) with details. We'll investigate and update the database.
 
 **Q: What about patched versions?**
-A: Currently, all versions are flagged. We're working on version-specific detection.
+A: The detector uses semver matching to flag only specific compromised versions. Safe versions of a package are not flagged. Check `compromised-packages.json` for version details.
 
 ---
 
