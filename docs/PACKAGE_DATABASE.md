@@ -1,10 +1,12 @@
 # Package Database Contribution Guide
 
-This document explains how to contribute to the Shai-Hulud 2.0 Detector's package database through crowdsourced, open-source contributions.
+This document explains how the Shai-Hulud 2.0 Detector's package database is maintained and how you can contribute.
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Automated Updates](#automated-updates)
+- [Data Sources](#data-sources)
 - [Database Structure](#database-structure)
 - [How to Contribute](#how-to-contribute)
   - [Adding New Packages](#adding-new-packages)
@@ -22,19 +24,84 @@ This document explains how to contribute to the Shai-Hulud 2.0 Detector's packag
 
 The `compromised-packages.json` file is the heart of the Shai-Hulud 2.0 Detector. It contains the list of all known compromised packages from the attack. This database is:
 
+- **Automatically Updated** - Syncs daily from 7 security vendors
+- **Precise Version Matching** - Only specific compromised versions are flagged
 - **Open Source** - Anyone can view and contribute
-- **Crowdsourced** - Community members help identify new packages
-- **Verified** - All submissions are reviewed before merging
-- **Version Controlled** - Full history of changes available
+- **Verified** - All data is cross-referenced from multiple sources
 
 ### Current Statistics
 
 | Metric | Value |
 |--------|-------|
-| Total Packages | 790+ |
-| Organizations Affected | 50+ |
+| Total Packages | 795+ |
+| Data Sources | 7 security vendors |
+| Update Frequency | Daily (automated) |
+| Version Precision | Specific versions only |
 | Last Updated | See `lastUpdated` field in JSON |
-| Contributors | See GitHub contributors |
+
+---
+
+## Automated Updates
+
+The package database is **automatically updated daily** via GitHub Actions. This ensures the database stays current with the latest threat intelligence from multiple security vendors.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DAILY UPDATE PROCESS                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. GitHub Action runs at 00:00 UTC daily                       │
+│                                                                 │
+│  2. Fetches consolidated IOCs from Datadog repository           │
+│     └─► https://github.com/DataDog/indicators-of-compromise     │
+│                                                                 │
+│  3. Parses CSV and extracts package names + specific versions   │
+│                                                                 │
+│  4. Updates compromised-packages.json                           │
+│                                                                 │
+│  5. Creates Pull Request if changes detected                    │
+│                                                                 │
+│  6. Maintainers review and merge                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Manual Update
+
+To manually trigger an update:
+
+```bash
+# Via GitHub Actions UI
+# Go to Actions → "Update IOC Database" → "Run workflow"
+
+# Or locally
+node scripts/update-ioc-database.js
+```
+
+---
+
+## Data Sources
+
+The database aggregates data from **7 security vendors** via the [Datadog Consolidated IOCs](https://github.com/DataDog/indicators-of-compromise/tree/main/shai-hulud-2.0):
+
+| Source | Packages | Description |
+|--------|----------|-------------|
+| **[Wiz](https://www.wiz.io)** | 795 | Threat investigation & attack analysis |
+| **[Koi Security](https://koi.security)** | 789 | Supply chain threat intelligence |
+| **[HelixGuard](https://helixguard.ai)** | 782 | Malware analysis and IOC identification |
+| **[StepSecurity](https://www.stepsecurity.io)** | 781 | GitHub Actions security |
+| **[ReversingLabs](https://www.reversinglabs.com)** | 605 | Software supply chain security |
+| **[Socket.dev](https://socket.dev)** | 554 | npm security monitoring |
+| **[Datadog Security Labs](https://securitylabs.datadoghq.com)** | 428 | SHA256 hash IOCs & malware analysis |
+
+### Why Multiple Sources?
+
+Each security vendor has unique detection methods. By aggregating data:
+- **Higher coverage**: No single source catches everything
+- **Cross-validation**: Multiple sources confirming = higher confidence
+- **Faster updates**: New discoveries propagate from any source
 
 ---
 
@@ -46,12 +113,12 @@ The `compromised-packages.json` file is the heart of the Shai-Hulud 2.0 Detector
 /compromised-packages.json
 ```
 
-### Schema
+### Schema (v2.0.0)
 
 ```json
 {
-  "version": "1.0.0",
-  "lastUpdated": "2025-11-25T10:00:00Z",
+  "version": "2.0.0",
+  "lastUpdated": "2025-12-02T00:00:00Z",
   "attackInfo": {
     "name": "Shai-Hulud 2.0",
     "alias": "The Second Coming",
@@ -59,16 +126,28 @@ The `compromised-packages.json` file is the heart of the Shai-Hulud 2.0 Detector
     "description": "..."
   },
   "indicators": {
-    "maliciousFiles": ["setup_bun.js", "bun_environment.js", ...],
-    "maliciousWorkflows": [".github/workflows/discussion.yaml", ...],
+    "maliciousFiles": ["setup_bun.js", "bun_environment.js", "actionsSecrets.json", ...],
+    "maliciousWorkflows": [".github/workflows/discussion.yaml", ".github/workflows/formatter_*.yml", ...],
     "fileHashes": {
-      "bun_environment.js": "d60ec97eea19fffb4809bc35b91033b52490ca11",
-      "setup_bun.js": "d1829b4708126dcc7bea7437c04d1f10eacd4a16"
+      "setup_bun.js": {
+        "sha1": "d1829b4708126dcc7bea7437c04d1f10eacd4a16",
+        "sha256": "a3894003ad1d293ba96d77881ccd2071446dc3f65f434669b49b3da92421901a"
+      },
+      "bun_environment.js": {
+        "sha1": "d60ec97eea19fffb4809bc35b91033b52490ca11",
+        "sha256": ["62ee164b...", "cbb9bc5a...", "..."]  // Multiple variants
+      }
     },
     "gitHubIndicators": {
       "runnerName": "SHA1HULUD",
-      "repoDescription": "Shai-Hulud: The Second Coming"
-    }
+      "repoDescription": "Shai-Hulud: The Second Coming",
+      "repoNamePattern": "[0-9a-z]{18}",
+      "workflowTrigger": "on: discussion"
+    },
+    "runnerPaths": ["$HOME/.dev-env/", "actions-runner-linux-x64-2.330.0.tar.gz"],
+    "credentialPaths": [".config/gcloud/application_default_credentials.json", ".npmrc"],
+    "primaryInfectionVectors": ["@postman/tunnel-agent@0.6.7", "posthog-node", "@asyncapi/specs@6.8.3"],
+    "mavenPackages": ["org.mvnpm:posthog-node:4.18.1"]
   },
   "stats": {
     "totalUniquePackages": 790,
@@ -81,11 +160,29 @@ The `compromised-packages.json` file is the heart of the Shai-Hulud 2.0 Detector
       "affectedVersions": ["*"]
     }
   ],
-  "sources": [
-    "https://..."
-  ]
+  "sources": ["https://..."],
+  "acknowledgements": {
+    "securityResearchers": [
+      {"org": "Wiz", "github": "wiz-sec"},
+      {"org": "Datadog Security Labs", "github": "DataDog"},
+      ...
+    ]
+  }
 }
 ```
+
+### New in v2.0.0
+
+| Field | Description |
+|-------|-------------|
+| `indicators.fileHashes` | Now supports both SHA-1 and SHA-256 hashes, with multiple variants per file |
+| `indicators.gitHubIndicators.repoNamePattern` | Regex pattern for malicious repo names |
+| `indicators.gitHubIndicators.workflowTrigger` | Malicious workflow trigger pattern |
+| `indicators.runnerPaths` | Paths where rogue runners are installed |
+| `indicators.credentialPaths` | Targeted credential file paths |
+| `indicators.primaryInfectionVectors` | Known initial infection packages |
+| `indicators.mavenPackages` | Maven/Java ecosystem packages affected |
+| `acknowledgements` | Credits for security researchers |
 
 ### Package Entry Fields
 
@@ -93,7 +190,31 @@ The `compromised-packages.json` file is the heart of the Shai-Hulud 2.0 Detector
 |-------|------|----------|-------------|
 | `name` | string | Yes | Full npm package name (e.g., `@scope/pkg` or `pkg`) |
 | `severity` | string | Yes | One of: `critical`, `high`, `medium`, `low` |
-| `affectedVersions` | array | Yes | Version patterns (e.g., `["*"]`, `[">=1.0.0 <2.0.0"]`) |
+| `affectedVersions` | array | Yes | **Specific versions only** (e.g., `["3.4.1", "3.4.2"]`) |
+
+### Version Precision
+
+The database now uses **specific version numbers** instead of wildcards:
+
+```json
+// OLD format (caused false positives)
+{
+  "name": "@asyncapi/parser",
+  "severity": "critical",
+  "affectedVersions": ["*"]  // Flagged ALL versions
+}
+
+// NEW format (precise matching)
+{
+  "name": "@asyncapi/parser",
+  "severity": "critical",
+  "affectedVersions": ["3.4.1", "3.4.2"]  // Only compromised versions
+}
+```
+
+This eliminates false positives for:
+- Pre-attack versions (published before Nov 24, 2025)
+- Post-remediation clean versions
 
 ### Severity Levels
 

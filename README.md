@@ -59,11 +59,14 @@
 - [Supported File Types](#supported-file-types)
 - [Understanding Results](#understanding-results)
 - [Affected Packages Database](#affected-packages-database)
+  - [Automated Daily Updates](#automated-daily-updates)
+  - [Why Version Precision Matters](#why-version-precision-matters)
 - [Indicators of Compromise](#indicators-of-compromise)
 - [Incident Response Guide](#incident-response-guide)
 - [FAQ](#faq)
 - [Contributing](#contributing)
 - [Acknowledgments](#acknowledgments)
+- [Thanks](#thanks)
 - [License](#license)
 
 ---
@@ -151,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
         with:
           fail-on-critical: true
 ```
@@ -174,15 +177,34 @@ View scan results in the Actions tab of your repository.
 
 This detector goes beyond simple package name matching to provide comprehensive threat detection:
 
+### Precise Version Matching
+
+The detector uses **semver (semantic versioning)** to accurately identify only the specific vulnerable versions of each package:
+
+```
+Example: kill-port package
+├── kill-port@2.0.1  →  ✅ SAFE (not affected)
+├── kill-port@2.0.2  →  ❌ COMPROMISED
+└── kill-port@2.0.3  →  ❌ COMPROMISED
+```
+
+This significantly reduces false positives by:
+- Matching exact versions listed in the compromised database
+- Supporting semver ranges (e.g., `>=1.0.0 <2.0.0`)
+- Properly handling version constraints from lockfiles
+
 ### Critical Risk Detection
 
 | Check | Description |
 |-------|-------------|
 | **Compromised Packages** | Scans against database of 790+ known compromised packages |
 | **Malicious Scripts** | Detects `setup_bun.js`, `bun_environment.js` in postinstall/preinstall hooks |
+| **SHA256 Hash Matching** | 🆕 Verifies file hashes against known malware signatures from Datadog IOC database |
 | **TruffleHog Activity** | Identifies credential scanning patterns and TruffleHog downloads |
 | **Malicious Runners** | Detects SHA1HULUD GitHub Actions self-hosted runner references |
-| **Secrets Exfiltration** | Finds `actionsSecrets.json` files with stolen credentials |
+| **Runner Installation** | 🆕 Finds `.dev-env/` directories and runner tarballs used by the attack |
+| **Workflow Triggers** | 🆕 Detects `on: discussion` workflow triggers used for command injection backdoors |
+| **Secrets Exfiltration** | Finds `actionsSecrets.json`, `truffleSecrets.json`, `cloud.json`, `environment.json` files |
 | **Shai-Hulud Repos** | Identifies git remotes/repos named "Shai-Hulud" |
 
 ### Medium Risk Detection
@@ -283,14 +305,17 @@ If you're doing systematic analysis and finding multiple packages:
 
 ### Database Statistics
 
-| Metric | Count |
+| Metric | Value |
 |--------|-------|
-| Total Packages | **790+** |
-| Organizations | **50+** |
-| Contributors | Growing! |
+| Total Packages | **795+** |
+| Data Sources | **7 security vendors** |
+| Update Frequency | **Daily (automated)** |
+| Version Precision | **Specific versions only** |
 | Last Updated | See `compromised-packages.json` |
 
 > **📖 Full Documentation:** [docs/PACKAGE_DATABASE.md](docs/PACKAGE_DATABASE.md)
+>
+> **🔄 Auto-Updated:** Database syncs daily from [Datadog Consolidated IOCs](https://github.com/DataDog/indicators-of-compromise/tree/main/shai-hulud-2.0)
 >
 > **🙏 Thank you to everyone who contributes. Together, we're making npm safer for everyone.**
 
@@ -305,13 +330,13 @@ The easiest way to use Shai-Hulud Detector is as a GitHub Action. **Now availabl
 #### Minimal Setup
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
 ```
 
 #### Full Setup with All Options
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
   with:
     fail-on-critical: true
     fail-on-high: false
@@ -333,17 +358,55 @@ You can also run the detector locally for development or CI systems without GitH
 git clone https://github.com/gensecaihq/Shai-Hulud-2.0-Detector.git
 cd Shai-Hulud-2.0-Detector
 npm install
+npm run build
+```
+
+#### Set Options
+There are two ways to set the options, either via CLI arguments or by setting environment variables.
+
+❗Make sure to add the working directory option to the path of the project you want to scan. 
+
+All other options are set to the below defaults and thus optional.
+
+Set the `--working-directory="/path/to/your/project"` flag when running the script or set the `INPUT_WORKING_DIRECTORY="/path/to/your/project"` environment variable like listed below.
+
+##### Via CLI arguments (option 1)
+```bash
+node dist/index.js --working-directory="/path/to/your/project" [options]
+
+Options:
+--fail-on-critical=true
+--fail-on-high=false
+--fail-on-any=false
+--scan-lockfiles=true
+--scan-node-modules=false
+--output-format="json"
+--working-directory="/path/to/your/project"
+```
+
+##### Via Environment Variables (option 2)
+**Bash**
+```bash
+export INPUT_FAIL_ON_CRITICAL=true
+export INPUT_FAIL_ON_HIGH=false
+export INPUT_FAIL_ON_ANY=false
+export INPUT_SCAN_LOCKFILES=true
+export INPUT_SCAN_NODE_MODULES=false
+export INPUT_OUTPUT_FORMAT="json"
+export INPUT_WORKING_DIRECTORY="/path/to/your/project"
+
 node dist/index.js
 ```
 
-#### Environment Variables for Local Use
-
-```bash
-# Set inputs via environment variables
-export INPUT_FAIL-ON-CRITICAL=true
-export INPUT_SCAN-LOCKFILES=true
-export INPUT_OUTPUT-FORMAT=json
-export INPUT_WORKING-DIRECTORY=/path/to/your/project
+**Powershell**
+```powershell
+$Env:INPUT_FAIL_ON_CRITICAL="true"
+$Env:INPUT_FAIL_ON_HIGH="false"
+$Env:INPUT_FAIL_ON_ANY="false"
+$Env:INPUT_SCAN_LOCKFILES="true"
+$Env:INPUT_SCAN_NODE_MODULES="true"
+$Env:INPUT_OUTPUT_FORMAT="json"
+$Env:INPUT_WORKING_DIRECTORY="/path/to/your/project"
 
 node dist/index.js
 ```
@@ -361,8 +424,8 @@ shai-hulud-scan:
     - git clone https://github.com/gensecaihq/Shai-Hulud-2.0-Detector.git /tmp/detector
     - cd /tmp/detector && npm ci
     - |
-      export INPUT_FAIL-ON-CRITICAL=true
-      export INPUT_WORKING-DIRECTORY=$CI_PROJECT_DIR
+      export INPUT_FAIL_ON_CRITICAL=true
+      export INPUT_WORKING_DIRECTORY=$CI_PROJECT_DIR
       node /tmp/detector/dist/index.js
   only:
     changes:
@@ -383,8 +446,8 @@ pipeline {
                 sh '''
                     git clone https://github.com/gensecaihq/Shai-Hulud-2.0-Detector.git /tmp/detector
                     cd /tmp/detector && npm ci
-                    export INPUT_FAIL-ON-CRITICAL=true
-                    export INPUT_WORKING-DIRECTORY=${WORKSPACE}
+                    export INPUT_FAIL_ON_CRITICAL=true
+                    export INPUT_WORKING_DIRECTORY=${WORKSPACE}
                     node /tmp/detector/dist/index.js
                 '''
             }
@@ -414,8 +477,8 @@ steps:
   - script: |
       git clone https://github.com/gensecaihq/Shai-Hulud-2.0-Detector.git /tmp/detector
       cd /tmp/detector && npm ci
-      export INPUT_FAIL-ON-CRITICAL=true
-      export INPUT_WORKING-DIRECTORY=$(Build.SourcesDirectory)
+      export INPUT_FAIL_ON_CRITICAL=true
+      export INPUT_WORKING_DIRECTORY=$(Build.SourcesDirectory)
       node /tmp/detector/dist/index.js
     displayName: 'Shai-Hulud Security Scan'
 ```
@@ -436,8 +499,8 @@ jobs:
           command: |
             git clone https://github.com/gensecaihq/Shai-Hulud-2.0-Detector.git /tmp/detector
             cd /tmp/detector && npm ci
-            export INPUT_FAIL-ON-CRITICAL=true
-            export INPUT_WORKING-DIRECTORY=$(pwd)
+            export INPUT_FAIL_ON_CRITICAL=true
+            export INPUT_WORKING_DIRECTORY=$(pwd)
             node /tmp/detector/dist/index.js
 
 workflows:
@@ -463,7 +526,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
 ```
 
 #### Scan Only Dependency Files
@@ -489,7 +552,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
 ```
 
 #### Scheduled Daily Scans
@@ -506,7 +569,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
         with:
           fail-on-any: true
 ```
@@ -550,7 +613,7 @@ jobs:
 #### Strict Mode - Fail on Any Detection
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
   with:
     fail-on-any: true
 ```
@@ -558,7 +621,7 @@ jobs:
 #### Warning Mode - Report but Don't Fail
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
   with:
     fail-on-critical: false
     fail-on-high: false
@@ -572,7 +635,7 @@ The detector automatically scans subdirectories for package files (up to 5 level
 #### Scan Entire Monorepo
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
   with:
     working-directory: '.'
     scan-lockfiles: true
@@ -581,7 +644,7 @@ The detector automatically scans subdirectories for package files (up to 5 level
 #### Scan Specific Package
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
   with:
     working-directory: './packages/frontend'
 ```
@@ -597,7 +660,7 @@ jobs:
         package: [frontend, backend, shared, cli]
     steps:
       - uses: actions/checkout@v4
-      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+      - uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
         with:
           working-directory: './packages/${{ matrix.package }}'
 ```
@@ -609,7 +672,7 @@ Generate SARIF reports for GitHub Security tab integration:
 #### Basic SARIF Output
 
 ```yaml
-- uses: gensecaihq/Shai-Hulud-2.0-Detector@v1
+- uses: gensecaihq/Shai-Hulud-2.0-Detector@v2
   with:
     output-format: sarif
 
@@ -692,7 +755,7 @@ Access scan results for conditional logic or notifications:
 | `fail-on-any` | Fail workflow if any compromised packages are found | `boolean` | `false` |
 | `scan-lockfiles` | Scan lockfiles for transitive dependencies | `boolean` | `true` |
 | `scan-node-modules` | Scan node_modules directory (slower, more thorough) | `boolean` | `false` |
-| `output-format` | Output format: `text`, `json`, or `sarif` | `string` | `text` |
+| `output-format` | Output format: `text`, `json`, or `sarif` |  `'text' \| 'json' \| 'sarif'`  | `text` |
 | `working-directory` | Directory to scan (relative to repository root) | `string` | `.` |
 
 ### Outputs Reference
@@ -707,18 +770,33 @@ Access scan results for conditional logic or notifications:
 | `security-findings` | JSON array of security findings | `[{"type":"suspicious-script",...}]` |
 | `sarif-file` | Path to generated SARIF file (when output-format is sarif) | `shai-hulud-results.sarif` |
 
+### CLI Arguments
+
+When running locally or in non-GitHub CI systems:
+
+| Variable | Maps To | Type | Default 
+|----------|---------|---------|---------|
+| `--fail-on-critical` | `fail-on-critical` input | `boolean` | `true` |
+| `--fail-on-high` | `fail-on-high` input | `boolean` | `false` |
+| `--fail-on-any` | `fail-on-any` input | `boolean` | `false` |
+| `--scan-lockfiles` | `scan-lockfiles` input | `boolean` | `true` |
+| `--scan-node-modules` | `scan-node-modules` input | `boolean` | `false` |
+| `--output-format` | `output-format` input | `'text' \| 'json' \| 'sarif'` | `text` |
+| `--working-directory` | `working-directory` input | `string` | `.` |
+
 ### Environment Variables
 
 When running locally or in non-GitHub CI systems:
 
-| Variable | Maps To | Example |
-|----------|---------|---------|
-| `INPUT_FAIL-ON-CRITICAL` | `fail-on-critical` input | `true` |
-| `INPUT_FAIL-ON-HIGH` | `fail-on-high` input | `false` |
-| `INPUT_FAIL-ON-ANY` | `fail-on-any` input | `false` |
-| `INPUT_SCAN-LOCKFILES` | `scan-lockfiles` input | `true` |
-| `INPUT_OUTPUT-FORMAT` | `output-format` input | `json` |
-| `INPUT_WORKING-DIRECTORY` | `working-directory` input | `/app` |
+| Variable | Maps To | Type | Default 
+|----------|---------|---------|---------|
+| `INPUT_FAIL_ON_CRITICAL` | `fail-on-critical` input | `boolean` | `true` |
+| `INPUT_FAIL_ON_HIGH` | `fail-on-high` input | `boolean` | `false` |
+| `INPUT_FAIL_ON_ANY` | `fail-on-any` input | `boolean` | `false` |
+| `INPUT_SCAN_LOCKFILES` | `scan-lockfiles` input | `boolean` | `true` |
+| `INPUT_SCAN_NODE_MODULES` | `scan-node-modules` input | `boolean` | `false` |
+| `INPUT_OUTPUT_FORMAT` | `output-format` input | `'text' \| 'json' \| 'sarif'` | `text` | 
+| `INPUT_WORKING_DIRECTORY` | `working-directory` input | `string` | `.` |
 
 ---
 
@@ -756,8 +834,12 @@ When running locally or in non-GitHub CI systems:
 
 ------------------------------------------------------------
   Files scanned: 2
+  Total dependencies: 1000
+  Compromised packages: 2
+  Security findings: 0
   Scan time: 67ms
-  Database version: 1.0.0
+  Database version: 2.0.0
+  Last updated: 2025-12-04
 ============================================================
 
   IMMEDIATE ACTIONS REQUIRED:
@@ -813,7 +895,7 @@ When running locally or in non-GitHub CI systems:
 
 ## Affected Packages Database
 
-The detector includes a database of **790 unique packages** identified in the attack:
+The detector includes a database of **795+ unique packages** identified in the attack, with **precise version matching** to minimize false positives.
 
 | Organization | Count | Key Packages |
 |--------------|-------|--------------|
@@ -825,14 +907,70 @@ The detector includes a database of **790 unique packages** identified in the at
 | Postman | 17 | `@postman/tunnel-agent`, `@postman/mcp-server`, `@postman/csv-parse` |
 | BrowserBase | 7 | `@browserbasehq/stagehand`, `@browserbasehq/mcp`, `@browserbasehq/sdk-functions` |
 | Oku UI | 41 | `@oku-ui/primitives`, `@oku-ui/dialog`, `@oku-ui/toast` |
-| Others | 508 | Various community packages |
+| Others | 513 | Various community packages |
 
-### Database Updates
+### Automated Daily Updates
 
-The package database is updated when:
-- New compromised packages are identified
-- False positives are reported and verified
-- Organizations release remediated versions
+The package database is **automatically updated daily** from the [Datadog Consolidated IOCs](https://github.com/DataDog/indicators-of-compromise/tree/main/shai-hulud-2.0), which aggregates data from **7 security vendors**:
+
+| Source | Description |
+|--------|-------------|
+| **[Datadog Security Labs](https://securitylabs.datadoghq.com)** | SHA256 hash IOCs & malware analysis |
+| **[Wiz](https://www.wiz.io)** | Threat investigation & attack analysis |
+| **[HelixGuard](https://helixguard.ai)** | Malware analysis and IOC identification |
+| **[ReversingLabs](https://www.reversinglabs.com)** | Software supply chain security |
+| **[Socket.dev](https://socket.dev)** | npm security monitoring |
+| **[StepSecurity](https://www.stepsecurity.io)** | GitHub Actions security |
+| **[Koi Security](https://koi.security)** | Supply chain threat intelligence |
+
+### How Updates Work
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DAILY UPDATE PROCESS                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  00:00 UTC      Fetch consolidated     Parse CSV &              │
+│  Daily ────► IOCs from Datadog ────► extract versions ────►    │
+│                                                                 │
+│      Update              Create PR              Merge           │
+│  ──► compromised- ────► for review ────► (after approval)      │
+│      packages.json                                              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- **Automated Workflow**: Runs daily at 00:00 UTC via GitHub Actions
+- **Manual Trigger**: Can be triggered manually via workflow dispatch
+- **PR-based Updates**: Changes create a Pull Request for review before merging
+- **Version Precision**: Only specific compromised versions are flagged (no wildcards)
+
+### Why Version Precision Matters
+
+Previous versions flagged ALL versions of a package. Now only specific compromised versions are detected:
+
+```
+Example: @asyncapi/parser
+├── @asyncapi/parser@3.4.0  →  ✅ SAFE (published Oct 2024, pre-attack)
+├── @asyncapi/parser@3.4.1  →  ❌ COMPROMISED (attack version)
+└── @asyncapi/parser@3.4.2  →  ❌ COMPROMISED (attack version)
+```
+
+This eliminates false positives for:
+- Pre-attack versions (published before Nov 24, 2025)
+- Post-remediation clean versions
+
+### Manual Database Update
+
+To manually trigger a database update:
+
+```bash
+# Via GitHub Actions UI
+# Go to Actions → "Update IOC Database" → Run workflow
+
+# Or locally
+node scripts/update-ioc-database.js
+```
 
 Check `compromised-packages.json` for the full list with version information.
 
@@ -844,15 +982,27 @@ Check `compromised-packages.json` for the full list with version information.
 
 If you find these files in your project or `node_modules`, you may be compromised:
 
-| File | SHA-1 Hash | Purpose |
-|------|------------|---------|
-| `setup_bun.js` | `d1829b4708126dcc7bea7437c04d1f10eacd4a16` | Downloads Bun runtime |
-| `bun_environment.js` | `d60ec97eea19fffb4809bc35b91033b52490ca11` | Executes malicious payload (10MB+ obfuscated) |
-| `actionsSecrets.json` | - | Stolen GitHub Actions secrets |
-| `cloud.json` | - | Stores stolen cloud credentials |
-| `contents.json` | - | Contains exfiltrated data |
-| `environment.json` | - | Holds environment variables |
-| `truffleSecrets.json` | - | TruffleHog scan results |
+| File | SHA-1 Hash | SHA-256 Hash | Purpose |
+|------|------------|--------------|---------|
+| `setup_bun.js` | `d1829b47...` | `a3894003ad1d293ba96d77881ccd2071...` | Downloads Bun runtime |
+| `bun_environment.js` | `d60ec97e...` | Multiple variants (6+ hashes) | Executes malicious payload (10MB+ obfuscated) |
+| `actionsSecrets.json` | - | - | Stolen GitHub Actions secrets (double Base64 encoded) |
+| `trufflehog_output.json` | - | - | TruffleHog credential scan results |
+| `cloud.json` | - | - | Stores stolen cloud credentials |
+| `contents.json` | - | - | Contains exfiltrated data |
+| `environment.json` | - | - | Holds environment variables |
+| `truffleSecrets.json` | - | - | TruffleHog scan results |
+
+### Runner Installation Artifacts
+
+The attack installs rogue GitHub Actions runners. Check for:
+
+| Artifact | Location | Description |
+|----------|----------|-------------|
+| `.dev-env/` | `$HOME/.dev-env/` | Runner installation directory |
+| `actions-runner-linux-x64-2.330.0.tar.gz` | Various | Specific runner version used by attack |
+| `.config/gcloud/application_default_credentials.json` | `$HOME/` | Targeted credential file |
+| `.npmrc` | `$HOME/` | Targeted npm credentials |
 
 ### Malicious Workflows
 
@@ -862,8 +1012,11 @@ Check `.github/workflows/` for these suspicious patterns:
 |---------|-------------|
 | `discussion.yaml` or `discussion.yml` | Injected workflow for remote execution |
 | `formatter_*.yml` | Malicious workflow with random suffix (e.g., `formatter_abc123.yml`) |
+| `on: discussion` trigger | Command injection backdoor trigger (🆕 v2.0.0) |
 
 These workflows typically use `SHA1HULUD` self-hosted runners to execute malicious code.
+
+**New in v2.0.0:** The detector now scans workflow files for `on: discussion` triggers, which are used by the attack to create command injection backdoors that persist even after the initial infection is cleaned.
 
 ### GitHub Indicators
 
@@ -966,7 +1119,7 @@ A: Yarn Classic lockfiles are supported. Yarn Berry (PnP) support is coming soon
 A: [Open an issue](https://github.com/gensecaihq/Shai-Hulud-2.0-Detector/issues) with details. We'll investigate and update the database.
 
 **Q: What about patched versions?**
-A: Currently, all versions are flagged. We're working on version-specific detection.
+A: The detector uses semver matching to flag only specific compromised versions. Safe versions of a package are not flagged. Check `compromised-packages.json` for version details.
 
 ---
 
@@ -1009,7 +1162,7 @@ npm install
 npm run build
 
 # 5. Test locally
-export INPUT_WORKING-DIRECTORY=/path/to/test/project
+export INPUT_WORKING_DIRECTORY=/path/to/test/project
 node dist/index.js
 ```
 
@@ -1070,15 +1223,25 @@ node dist/index.js
 
 This project builds on the excellent work of security researchers who identified and analyzed the Shai-Hulud 2.0 attack:
 
-- **[Aikido Security](https://www.aikido.dev)** - Initial detection and detailed analysis
-- **[Wiz.io](https://www.wiz.io)** - Comprehensive threat investigation
-- **[HelixGuard](https://helixguard.ai)** - Malware analysis and IOC identification
+| Organization | GitHub | Contribution |
+|-------------|--------|--------------|
+| **[Wiz](https://www.wiz.io)** | [@wiz-sec](https://github.com/wiz-sec) | Comprehensive threat investigation & aftermath analysis |
+| **[Datadog Security Labs](https://securitylabs.datadoghq.com)** | [@DataDog](https://github.com/DataDog) | SHA256 hash IOCs & detailed malware analysis |
+| **[Aikido Security](https://www.aikido.dev)** | [@AikidoSec](https://github.com/AikidoSec) | Initial detection and package database |
+| **[Postman](https://www.postman.com)** | [@postmanlabs](https://github.com/postmanlabs) | Post-mortem analysis & package response |
+| **[PostHog](https://posthog.com)** | [@PostHog](https://github.com/PostHog) | Attack timeline & incident response |
+| **[HelixGuard](https://helixguard.ai)** | [@helixguard](https://github.com/helixguard) | Malware analysis and IOC identification |
 
 ### Research & Analysis
 
-- [Aikido Security Blog - Shai-Hulud Strikes Again](https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains)
-- [Wiz.io Blog - Shai-Hulud 2.0 Investigation](https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack)
-- [HelixGuard Blog - Malicious SHA1HULUD Analysis](https://helixguard.ai/blog/malicious-sha1hulud-2025-11-24)
+- [Wiz.io - Shai-Hulud 2.0 Investigation](https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack)
+- [Wiz.io - Shai-Hulud 2.0 Aftermath Analysis](https://www.wiz.io/blog/shai-hulud-2-0-aftermath-ongoing-supply-chain-attack)
+- [Datadog Security Labs - npm Worm Analysis](https://securitylabs.datadoghq.com/articles/shai-hulud-2.0-npm-worm/)
+- [Datadog IOC Repository](https://github.com/DataDog/indicators-of-compromise/tree/main/shai-hulud-2.0)
+- [Aikido Security - Shai-Hulud Strikes Again](https://www.aikido.dev/blog/shai-hulud-strikes-again-hitting-zapier-ensdomains)
+- [Postman Engineering - npm Supply Chain Attack](https://blog.postman.com/engineering/shai-hulud-2-0-npm-supply-chain-attack/)
+- [PostHog - Attack Post-Mortem](https://posthog.com/blog/nov-24-shai-hulud-attack-post-mortem)
+- [HelixGuard - Malicious SHA1HULUD Analysis](https://helixguard.ai/blog/malicious-sha1hulud-2025-11-24)
 
 ### Open Source Tools
 
@@ -1090,6 +1253,36 @@ This project builds on the excellent work of security researchers who identified
 
 Thanks to everyone who reported affected packages, tested the detector, and helped spread awareness about this attack.
 
+---
+
+## Thanks
+
+A huge thank you to all the community members who have contributed to this project through code, issue reports, and discussions:
+
+| | Contributor | Contributions |
+|---|-------------|---------------|
+| <img src=https://github.com/albe.png width=32 height=32 alt=@albe> | [@albe](https://github.com/albe) | Code contributions, Pull requests |
+| <img src=https://github.com/alokemajumder.png width=32 height=32 alt=@alokemajumder> | [@alokemajumder](https://github.com/alokemajumder) | Code contributions, Issue reports, Pull requests |
+| <img src=https://github.com/buggedcom.png width=32 height=32 alt=@buggedcom> | [@buggedcom](https://github.com/buggedcom) | Discussions |
+| <img src=https://github.com/fhafner2.png width=32 height=32 alt=@fhafner2> | [@fhafner2](https://github.com/fhafner2) | Discussions |
+| <img src=https://github.com/gaellafond.png width=32 height=32 alt=@gaellafond> | [@gaellafond](https://github.com/gaellafond) | Issue reports |
+| <img src=https://github.com/Gaurav0.png width=32 height=32 alt=@Gaurav0> | [@Gaurav0](https://github.com/Gaurav0) | Issue reports |
+| <img src=https://github.com/jeis4wpi.png width=32 height=32 alt=@jeis4wpi> | [@jeis4wpi](https://github.com/jeis4wpi) | Issue reports |
+| <img src=https://github.com/julia-infocaster.png width=32 height=32 alt=@julia-infocaster> | [@julia-infocaster](https://github.com/julia-infocaster) | Code contributions, Pull requests |
+| <img src=https://github.com/julien1619.png width=32 height=32 alt=@julien1619> | [@julien1619](https://github.com/julien1619) | Pull requests |
+| <img src=https://github.com/kevinmui-atg.png width=32 height=32 alt=@kevinmui-atg> | [@kevinmui-atg](https://github.com/kevinmui-atg) | Pull requests |
+| <img src=https://github.com/linhungsam.png width=32 height=32 alt=@linhungsam> | [@linhungsam](https://github.com/linhungsam) | Discussions |
+| <img src=https://github.com/luca-cond.png width=32 height=32 alt=@luca-cond> | [@luca-cond](https://github.com/luca-cond) | Discussions |
+| <img src=https://github.com/lucascco.png width=32 height=32 alt=@lucascco> | [@lucascco](https://github.com/lucascco) | Pull requests |
+| <img src=https://github.com/maxie7.png width=32 height=32 alt=@maxie7> | [@maxie7](https://github.com/maxie7) | Code contributions, Discussions, Pull requests |
+| <img src=https://github.com/sampov2.png width=32 height=32 alt=@sampov2> | [@sampov2](https://github.com/sampov2) | Discussions |
+| <img src=https://github.com/seezee.png width=32 height=32 alt=@seezee> | [@seezee](https://github.com/seezee) | Issue reports |
+| <img src=https://github.com/topsinfonimesh.png width=32 height=32 alt=@topsinfonimesh> | [@topsinfonimesh](https://github.com/topsinfonimesh) | Discussions |
+
+
+Your contributions help protect millions of developers worldwide. 🙏
+
+*This section is automatically updated weekly.*
 ---
 
 ## License

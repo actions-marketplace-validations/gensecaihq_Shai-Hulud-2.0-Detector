@@ -3,6 +3,10 @@ export interface PackageEntry {
     severity: 'critical' | 'high' | 'medium' | 'low';
     affectedVersions: string[];
 }
+export interface FileHash {
+    sha1?: string;
+    sha256: string | string[];
+}
 export interface MasterPackages {
     version: string;
     lastUpdated: string;
@@ -15,27 +19,46 @@ export interface MasterPackages {
     indicators: {
         maliciousFiles: string[];
         maliciousWorkflows: string[];
-        fileHashes: Record<string, string>;
+        fileHashes: Record<string, FileHash>;
         gitHubIndicators: {
             runnerName: string;
             repoDescription: string;
+            repoNamePattern?: string;
+            workflowTrigger?: string;
         };
+        runnerPaths?: string[];
+        credentialPaths?: string[];
+        primaryInfectionVectors?: string[];
+        mavenPackages?: string[];
     };
-    stats: {
+    stats?: {
         totalUniquePackages: number;
         byOrganization: Record<string, number>;
     };
     packages: PackageEntry[];
-    sources: string[];
+    sources?: string[];
+    dataSource?: {
+        url: string;
+        description: string;
+        sources: string[];
+        fetchedAt: string;
+    };
+    acknowledgements?: {
+        securityResearchers: Array<{
+            org: string;
+            github: string;
+        }>;
+    };
 }
 export interface ScanResult {
     package: string;
     version: string;
-    severity: 'critical' | 'high' | 'medium' | 'low';
+    affected: boolean;
+    severity: 'critical' | 'high' | 'medium' | 'low' | 'none';
     isDirect: boolean;
     location: string;
 }
-export type SecurityFindingType = 'compromised-package' | 'suspicious-script' | 'trufflehog-activity' | 'shai-hulud-repo' | 'secrets-exfiltration' | 'malicious-runner';
+export type SecurityFindingType = 'compromised-package' | 'suspicious-script' | 'trufflehog-activity' | 'shai-hulud-repo' | 'secrets-exfiltration' | 'malicious-runner' | 'malware-hash-match' | 'runner-installation' | 'malicious-workflow-trigger';
 export interface SecurityFinding {
     type: SecurityFindingType;
     severity: 'critical' | 'high' | 'medium' | 'low';
@@ -44,6 +67,29 @@ export interface SecurityFinding {
     location: string;
     line?: number;
     evidence?: string;
+}
+/**
+ * Allowlist entry for excluding false positives from scan results.
+ * All specified fields must match (AND logic). Omitted fields act as wildcards.
+ * @see Discussion #17: https://github.com/gensecaihq/Shai-Hulud-2.0-Detector/discussions/17
+ */
+export interface AllowlistEntry {
+    /** Finding type to match (e.g., 'suspicious-script', 'compromised-package') */
+    type?: SecurityFindingType;
+    /** Severity level to match */
+    severity?: 'critical' | 'high' | 'medium' | 'low';
+    /** Exact title match */
+    title?: string;
+    /** Substring match on title */
+    titleContains?: string;
+    /** Exact location/file path match */
+    location?: string;
+    /** Substring match on location */
+    locationContains?: string;
+    /** Substring match on evidence field */
+    evidenceContains?: string;
+    /** Documentation comment (not used in matching) */
+    comment?: string;
 }
 export interface ScriptCheckResult {
     hasSuspiciousScripts: boolean;
@@ -59,6 +105,7 @@ export interface ScanSummary {
     cleanCount: number;
     results: ScanResult[];
     securityFindings: SecurityFinding[];
+    scannedFilesCount: number;
     scannedFiles: string[];
     scanTime: number;
 }
@@ -101,7 +148,7 @@ export interface YarnLockEntry {
     integrity?: string;
     dependencies?: Record<string, string>;
 }
-export interface ActionInputs {
+export interface Inputs {
     failOnCritical: boolean;
     failOnHigh: boolean;
     failOnAny: boolean;
@@ -109,6 +156,12 @@ export interface ActionInputs {
     scanNodeModules: boolean;
     outputFormat: 'text' | 'json' | 'sarif';
     workingDirectory: string;
+    /** Path to allowlist JSON file for excluding false positives */
+    allowlistPath: string;
+    /** Skip allowlist processing entirely (for security audits) */
+    ignoreAllowlist: boolean;
+    /** Show allowlisted items as warnings instead of hiding them */
+    warnOnAllowlist: boolean;
 }
 export interface SarifResult {
     $schema: string;
