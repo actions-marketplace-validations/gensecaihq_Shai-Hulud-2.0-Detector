@@ -829,18 +829,18 @@ Access scan results for conditional logic or notifications:
 
 ### Inputs Reference
 
-| Input               | Description                                                   | Type                          | Default                      |
-|---------------------|---------------------------------------------------------------|-------------------------------|------------------------------|
-| `fail-on-critical`  | Fail workflow if critical severity packages are found         | `boolean`                     | `true`                       |
-| `fail-on-high`      | Fail workflow if high or critical severity packages are found | `boolean`                     | `false`                      |
-| `fail-on-any`       | Fail workflow if any compromised packages are found           | `boolean`                     | `false`                      |
-| `scan-lockfiles`    | Scan lockfiles for transitive dependencies                    | `boolean`                     | `true`                       |
-| `scan-node-modules` | Scan node_modules directory (slower, more thorough)           | `boolean`                     | `false`                      |
-| `output-format`     | Output format: `text`, `json`, or `sarif`                     | `'text' \| 'json' \| 'sarif'` | `text`                       |
-| `working-directory` | Directory to scan (relative to repository root)               | `string`                      | `.`                          |
-| `allowlist-path`    | Path to allowlist file for ignoring findings                  | `string`                      | `.shai-hulud-allowlist.json` |
-| `ignore-allowlist`  | Ignore allowlist and report all findings                      | `boolean`                     | `false`                      |
-| `warn-on-allowlist` | Warn on allowlisted findings instead of ignoring              | `boolean`                     | `false`                      |
+| Input               | Description                                                                     | Type                          | Default                      |
+|---------------------|---------------------------------------------------------------------------------|-------------------------------|------------------------------|
+| `fail-on-critical`  | Fail workflow if critical severity packages are found                           | `boolean`                     | `true`                       |
+| `fail-on-high`      | Fail workflow if high or critical severity packages are found                   | `boolean`                     | `false`                      |
+| `fail-on-any`       | Fail workflow if any compromised packages are found                             | `boolean`                     | `false`                      |
+| `scan-lockfiles`    | Scan lockfiles for transitive dependencies                                      | `boolean`                     | `true`                       |
+| `scan-node-modules` | Scan node_modules directory (slower, more thorough)                             | `boolean`                     | `false`                      |
+| `output-format`     | Output format: `text`, `json`, or `sarif`                                       | `'text' \| 'json' \| 'sarif'` | `text`                       |
+| `working-directory` | Directory to scan (relative to repository root)                                 | `string`                      | `.`                          |
+| `allowlist-path`    | Path to allowlist file for ignoring findings, relative to the working-directory | `string`                      | `.shai-hulud-allowlist.json` |
+| `ignore-allowlist`  | Ignore allowlist and report all findings                                        | `boolean`                     | `false`                      |
+| `warn-on-allowlist` | Warn on allowlisted findings instead of ignoring                                | `boolean`                     | `false`                      |
 
 ### Outputs Reference
 
